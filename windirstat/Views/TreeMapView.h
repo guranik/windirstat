@@ -37,6 +37,8 @@ public:
     void DrawHover(CDC* pdc) override;
 
     void HighlightSelectedItem(CDC* pdc, const CItem* item, bool single, bool hover = false) const;
+    void HighlightDiffBranch(CDC* pdc, const CItem* scope, int kind, bool hover) const;
+    void DrawDiffLegend(CDC* pdc, CRect& rect);
     CItem* FindItemAtPoint(CPoint point) override;
     bool HasValidLayout() const override;
     void ClearVisualizationLayout() override;
@@ -47,5 +49,6 @@ public:
     static constexpr int ZoomFrameWidth = 4;
 
     CTreeMap m_treeMap;               // Treemap generator
+    int m_diffHeaderHeight = 0;
 
 };

@@ -251,6 +251,9 @@
     <ClInclude Include="Constants.h">
       <Filter>Header Files\Core</Filter>
     </ClInclude>
+    <ClInclude Include="SnapshotDiffCore.h" />
+    <ClInclude Include="SnapshotDiff.h" />
+    <ClInclude Include="Dialogs\CompareSnapshotsDlg.h"><Filter>Source Files</Filter></ClInclude>
     <ClInclude Include="CsvLoader.h">
       <Filter>Header Files\Core</Filter>
     </ClInclude>
@@ -517,6 +520,9 @@
     <ClCompile Include="Layout.cpp">
       <Filter>Source Files\User Interface</Filter>
     </ClCompile>
+    <ClCompile Include="SnapshotDiffCore.cpp" />
+    <ClCompile Include="SnapshotDiff.cpp" />
+    <ClCompile Include="Dialogs\CompareSnapshotsDlg.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="CsvLoader.cpp">
       <Filter>Source Files\Core</Filter>
     </ClCompile>

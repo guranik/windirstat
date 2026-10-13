@@ -65,6 +65,7 @@ void CWinDirStatModel::ClearScanState()
     delete m_rootItem;
     m_rootItem = nullptr;
     m_zoomItem = nullptr;
+    m_snapshotDiff.reset();
 }
 
 bool CWinDirStatModel::ResetScan()
@@ -487,6 +488,7 @@ void CWinDirStatModel::RebuildExtensionData()
 
 void CWinDirStatModel::DeletePhysicalItems(const std::vector<CItem*>& items, const bool toTrashBin, const bool emptyOnly) const
 {
+    if (IsDiffMode()) return;
     auto& showDeleteWarning = toTrashBin ?
         COptions::ShowDeleteToRecycleBinWarning : COptions::ShowDeletePermanentlyWarning;
     if (showDeleteWarning)

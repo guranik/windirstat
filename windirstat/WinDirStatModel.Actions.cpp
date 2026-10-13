@@ -25,6 +25,19 @@ static std::optional<std::wstring> ChooseReportPath(const CDialog::FilePickerMod
 }
 void CWinDirStatModel::OnUpdateCentralHandler(CCmdUI* pCmdUI)
 {
+    if (IsDiffMode())
+    {
+        // A comparison represents historical data. Only navigation, searching and
+        // copying are valid here; refresh/export/cleanup would misuse delta sizes.
+        switch (pCmdUI->m_nID)
+        {
+        case ID_EDIT_COPY_CLIPBOARD: case ID_SEARCH: case ID_TREEMAP_ZOOMIN:
+        case ID_TREEMAP_ZOOMOUT: case ID_TREEMAP_ZOOMRESET:
+        case ID_TREEMAP_SELECT_PARENT: case ID_TREEMAP_RESELECT_CHILD:
+            break;
+        default: pCmdUI->Enable(false); return;
+        }
+    }
     struct commandFilter
     {
         bool allowNone = false; // allow display when nothing is selected
@@ -231,6 +244,7 @@ void CWinDirStatModel::OnCleanupSparsifyFile()
 
 void CWinDirStatModel::OnRefreshSelected()
 {
+    if (IsDiffMode()) return;
     // Optimize refresh selected when done on root item
     const auto& selected = GetAllSelected();
     if (selected.size() == 1 && selected.front() == GetRootItem() && !SearchListHasFocus()) OnRefreshAll();
@@ -239,11 +253,13 @@ void CWinDirStatModel::OnRefreshSelected()
 
 void CWinDirStatModel::OnRefreshAll()
 {
+    if (IsDiffMode()) return;
     StartScan(Get()->GetScanPathSpec());
 }
 
 void CWinDirStatModel::OnSaveResults() const
 {
+    if (IsDiffMode()) return;
     // Request the file path from the user
     const auto path = ChooseReportPath(CDialog::FilePickerMode::Save);
     if (!path) return;
@@ -719,6 +735,7 @@ void CWinDirStatModel::OnExecuteDism()
 
 void CWinDirStatModel::OnUpdateUserDefinedCleanup(CCmdUI* pCmdUI)
 {
+    if (IsDiffMode()) return pCmdUI->Enable(false);
     const UINT i = pCmdUI->m_nID - ID_USERDEFINEDCLEANUP0;
     if (!IsScanSettled() || i >= COptions::UserDefinedCleanups.size()) return pCmdUI->Enable(false);
 
@@ -738,6 +755,7 @@ void CWinDirStatModel::OnUserDefinedCleanup(const UINT id)
 
 void CWinDirStatModel::RunUserDefinedCleanup(const size_t index)
 {
+    if (IsDiffMode()) return;
     if (!IsScanSettled() || index >= COptions::UserDefinedCleanups.size() ||
         !COptions::UserDefinedCleanups[index].Enabled) return;
 
@@ -962,6 +980,7 @@ void CWinDirStatModel::StopScanningEngine(StopReason stopReason)
 
 void CWinDirStatModel::OnContextMenuExplore(const UINT nID)
 {
+    if (IsDiffMode()) return;
     const auto selected = GetAllSelected();
     if (selected.empty()) return;
 
@@ -992,6 +1011,7 @@ void CWinDirStatModel::OnContextMenuExplore(const UINT nID)
 
 void CWinDirStatModel::StartScanningEngine(std::vector<CItem*> items)
 {
+    if (IsDiffMode()) return;
     // Stop any previous executions
     CWaitCursor wc;
     StopScanningEngine();
@@ -1375,6 +1395,7 @@ static bool HasSampledDuplicateSelection()
 
 void CWinDirStatModel::OnUpdateCreateHardlink(CCmdUI* pCmdUI)
 {
+    if (IsDiffMode()) return pCmdUI->Enable(false);
     // Only allow when focused on duplicate list after scanning has settled
     if (!IsScanSettled() || !DupeListHasFocus() || HasSampledDuplicateSelection())
     {

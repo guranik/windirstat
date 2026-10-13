@@ -8,6 +8,7 @@
 
 #include "pch.h"
 #include "TreeListControl.h"
+#include "SnapshotDiff.h"
 
 class CItem;
 class CItemDupe;
@@ -61,7 +62,8 @@ enum MODEL_CHANGE : std::uint8_t
     MODEL_CHANGE_ZOOM,                // Only zoom item has changed.
     MODEL_CHANGE_LIST_STYLE,          // Options: List style (grid/stripes) or treelist colors changed
     MODEL_CHANGE_TREEMAP_STYLE,       // Options: Treemap style (grid, colors etc.) changed
-    MODEL_CHANGE_SIZE_MODE            // Options: Size mode (logical vs physical) changed
+    MODEL_CHANGE_SIZE_MODE,           // Options: Size mode (logical vs physical) changed
+    MODEL_CHANGE_DIFF_HOVER           // Overlay only; do not rebuild the cached map.
 };
 
 //
@@ -81,6 +83,11 @@ public:
     bool ResetScan();
     bool StartScan(const std::wstring& pathSpec);
     bool OpenLoadedScan(CItem* loadedRoot);
+    bool IsDiffMode() const;
+    const SnapshotDiffData* GetSnapshotDiff() const;
+    void SetDiffHover(const CItem* item);
+    bool CompareSnapshotPaths(const std::wstring& beforePath, const std::wstring& afterPath,
+        diskdiff::Metric metric = diskdiff::Metric::Logical);
     void SetScanPathSpec(const std::wstring& pathSpec);
     const std::wstring& GetScanPathSpec() const { return m_scanPathSpec; }
     const std::wstring& GetScanTitle() const { return m_scanTitle; }
@@ -164,6 +171,7 @@ private:
 
     CItem* m_rootItem = nullptr; // The very root item
     CItem* m_zoomItem = nullptr;   // Current "zoom root"
+    std::unique_ptr<SnapshotDiffData> m_snapshotDiff;
     std::wstring m_highlightExtension; // Currently highlighted extension
     bool m_highlightUnregistered = false; // Highlight all unregistered extensions instead of one
     std::unordered_set<std::wstring> m_highlightExtensions; // Precomputed unregistered set for the treemap highlight
@@ -195,6 +203,10 @@ protected:
     void OnSaveDuplicates();
     void OnSavePermissions();
     void OnLoadResults();
+    void OnCompareSnapshots();
+    void OnUpdateCompareSnapshots(CCmdUI* ui);
+    void OnDiffHighlight(UINT id);
+    void OnUpdateDiffHighlight(CCmdUI* ui);
     void OnEditCopy();
     void OnCleanupEmptyRecycleBin() const;
     void OnUpdateCentralHandler(CCmdUI* pCmdUI);
@@ -255,6 +267,10 @@ inline std::span<const RouteEntry> CWinDirStatModel::Routes()
         Route::Command<&OnRefreshAll>(ID_REFRESH_ALL),
         Route::Update<&OnUpdateCentralHandler>(ID_REFRESH_ALL),
         Route::Command<&OnLoadResults>(ID_LOAD_RESULTS),
+        Route::Command<&OnCompareSnapshots>(ID_COMPARE_SNAPSHOTS),
+        Route::Update<&OnUpdateCompareSnapshots>(ID_COMPARE_SNAPSHOTS),
+        Route::Command<&OnDiffHighlight>(ID_DIFF_HIGHLIGHT_ALL, ID_DIFF_HIGHLIGHT_SHRUNK),
+        Route::Update<&OnUpdateDiffHighlight>(ID_DIFF_HIGHLIGHT_ALL, ID_DIFF_HIGHLIGHT_SHRUNK),
         Route::Command<&OnSaveResults>(ID_SAVE_RESULTS),
         Route::Update<&OnUpdateCentralHandler>(ID_SAVE_RESULTS),
         Route::Command<&OnSaveDuplicates>(ID_SAVE_DUPLICATES),

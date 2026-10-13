@@ -252,6 +252,7 @@ bool CItem::IsMtpRoot() const noexcept
 
 bool CItem::HasShellIdentity() const noexcept
 {
+    if (CWinDirStatModel::Get()->IsDiffMode()) return false;
     return !IsTypeOrFlag(ITF_MTP) || FinderMtp::HasShellIdentity(m_index);
 }
 
@@ -590,6 +591,7 @@ void CItem::SetReparseTag(const DWORD reparseType) noexcept
 
 std::wstring CItem::GetOwner(const bool force) const
 {
+    if (CWinDirStatModel::Get()->IsDiffMode()) return {};
     // Skip filesystem security queries for MTP items
     if (IsTypeOrFlag(ITF_MTP)) return {};
     auto* viewState = force ? nullptr : GetViewState();

@@ -58,9 +58,54 @@ bool CTreeMapView::CreateRenderBitmap(CDC* pDC, const CSize size)
 
 void CTreeMapView::RenderVisualization(CDC* pDC, CRect rect)
 {
+    m_diffHeaderHeight = 0;
+    if (CWinDirStatModel::Get()->IsDiffMode()) DrawDiffLegend(pDC, rect);
     if (CWinDirStatModel::Get()->IsZoomed()) DrawZoomFrame(pDC, rect);
+    auto options = COptions::TreeMapOptions;
+    if (CWinDirStatModel::Get()->IsDiffMode()) options.showFolderFrames = true;
     m_treeMap.DrawTreeMap(pDC->Handle(), rect,
-        CWinDirStatModel::Get()->GetZoomItem(), &COptions::TreeMapOptions);
+        CWinDirStatModel::Get()->GetZoomItem(), &options);
+    if (CWinDirStatModel::Get()->IsDiffMode() && CWinDirStatModel::Get()->GetZoomItem()->TmiGetSize() == 0)
+    {
+        pDC->SetTextColor(DarkMode::SystemColor(COLOR_WINDOWTEXT));
+        pDC->SetBkMode(TRANSPARENT);
+        pDC->DrawText(Localization::Lookup(IDS_DIFF_ZERO), &rect, DT_CENTER | DT_VCENTER | DT_WORDBREAK);
+    }
+}
+
+void CTreeMapView::DrawDiffLegend(CDC* pdc, CRect& rect)
+{
+    GdiObjectSelection font(pdc, GetAppFont());
+    const auto* diff = CWinDirStatModel::Get()->GetSnapshotDiff();
+    const auto* entry = diff->Find(CWinDirStatModel::Get()->GetZoomItem());
+    if (!entry || rect.Width() <= 0) return;
+    const int columns = rect.Width() >= ScaleForDpi(800) ? 4 : 2;
+    const int rowHeight = std::max(ScaleForDpi(26), pdc->GetTextExtent(L"Ag").cy + ScaleForDpi(8));
+    m_diffHeaderHeight = std::min<int>(rect.Height(), rowHeight * (4 / columns));
+    CRect header = rect;
+    header.bottom = header.top + m_diffHeaderHeight;
+    pdc->FillSolidRect(header, DarkMode::SystemColor(COLOR_WINDOW));
+    pdc->SetTextColor(DarkMode::SystemColor(COLOR_WINDOWTEXT));
+    pdc->SetBkMode(TRANSPARENT);
+    for (int i = 0; i < 4; ++i)
+    {
+        CRect label(header.left + header.Width() * (i % columns) / columns,
+            header.top + rowHeight * (i / columns),
+            header.left + header.Width() * (i % columns + 1) / columns,
+            std::min(header.bottom, header.top + rowHeight * (i / columns + 1)));
+        if (label.IsEmpty()) continue;
+        label.Deflate(ScaleForDpi(5), ScaleForDpi(3));
+        CRect swatch = label;
+        swatch.right = swatch.left + ScaleForDpi(12);
+        swatch.top += std::max(0, (swatch.Height() - ScaleForDpi(12)) / 2);
+        swatch.bottom = std::min(swatch.bottom, swatch.top + ScaleForDpi(12));
+        pdc->FillSolidRect(swatch, SnapshotDiffData::KindColor(static_cast<diskdiff::Kind>(i)));
+        label.left = swatch.right + ScaleForDpi(5);
+        const auto text = std::format(L"{}: {} ({})", SnapshotDiffData::KindName(static_cast<diskdiff::Kind>(i)),
+            FormatBytes(entry->totals.bytes[i]), FormatCount(entry->totals.files[i]));
+        pdc->DrawText(text, &label, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+    }
+    rect.top += m_diffHeaderHeight;
 }
 
 void CTreeMapView::DrawZoomFrame(CDC* pdc, CRect& rc) const
@@ -92,7 +137,7 @@ void CTreeMapView::DrawHighlightExtension(CDC* pdc)
     const bool isZoomed = model->IsZoomed();
 
     const CPoint offset = isZoomed
-        ? CPoint(ZoomFrameWidth, ZoomFrameWidth) : CPoint();
+        ? CPoint(ZoomFrameWidth, ZoomFrameWidth + m_diffHeaderHeight) : CPoint(0, m_diffHeaderHeight);
     for (const CTreeMap::VisibleItem& visible : m_treeMap.GetVisibleItems())
     {
         const CItem* item = visible.item;
@@ -105,6 +150,21 @@ void CTreeMapView::DrawHighlightExtension(CDC* pdc)
 
 void CTreeMapView::DrawHover(CDC* pdc)
 {
+    if (const auto* diff = CWinDirStatModel::Get()->GetSnapshotDiff(); diff)
+    {
+        const CItem* scope = diff->hoverItem ? diff->hoverItem : m_hoverItem;
+        if (!scope) return;
+        int kind = diff->highlightKind;
+        // A tile identifies a class; highlight that class throughout its folder.
+        if (!diff->hoverItem)
+            if (const auto* entry = diff->Find(scope); entry && entry->kind)
+            {
+                if (kind < 0) kind = static_cast<int>(*entry->kind);
+                scope = scope->GetParent();
+            }
+        HighlightDiffBranch(pdc, scope, kind, true);
+        return;
+    }
     HighlightSelectedItem(pdc, GetDisplayItem(m_hoverItem), false, true);
 }
 
@@ -115,7 +175,24 @@ void CTreeMapView::DrawSelection(CDC* pdc)
         // Ignore if not a child of the current zoomed item
         if (!CWinDirStatModel::Get()->GetZoomItem()->IsAncestorOf(item)) continue;
 
-        HighlightSelectedItem(pdc, GetDisplayItem(item), selectedItems.size() == 1);
+        if (const auto* diff = CWinDirStatModel::Get()->GetSnapshotDiff(); diff && diff->highlightKind >= 0)
+            HighlightDiffBranch(pdc, item, diff->highlightKind, false);
+        else HighlightSelectedItem(pdc, GetDisplayItem(item), selectedItems.size() == 1);
+    }
+}
+
+void CTreeMapView::HighlightDiffBranch(CDC* pdc, const CItem* scope, const int kind, const bool hover) const
+{
+    const auto* diff = CWinDirStatModel::Get()->GetSnapshotDiff();
+    if (!scope || !diff) return;
+    const CPoint offset = CWinDirStatModel::Get()->IsZoomed() ?
+        CPoint(ZoomFrameWidth, ZoomFrameWidth + m_diffHeaderHeight) : CPoint(0, m_diffHeaderHeight);
+    for (const auto& visible : m_treeMap.GetVisibleItems())
+    {
+        if (!visible.item->TmiIsLeaf() || !scope->IsAncestorOf(visible.item)) continue;
+        const auto* entry = diff->Find(visible.item);
+        if (!entry || !entry->kind || (kind >= 0 && kind != static_cast<int>(*entry->kind))) continue;
+        RenderHighlightRectangle(pdc, visible.rectangle + offset, hover);
     }
 }
 
@@ -127,6 +204,7 @@ void CTreeMapView::HighlightSelectedItem(CDC* pdc, const CItem* item, const bool
 {
     CRect rc;
     if (!m_treeMap.TryGetItemRectangle(item, rc)) return;
+    rc.Offset(0, m_diffHeaderHeight);
 
     // Offset the display rectangle if zoomed
     if (CWinDirStatModel::Get()->IsZoomed())
@@ -161,6 +239,7 @@ CItem* CTreeMapView::FindItemAtPoint(const CPoint point)
 {
     // Offset the click point if zoomed
     CPoint pointClicked = point;
+    pointClicked.Offset(0, -m_diffHeaderHeight);
 
     if (CWinDirStatModel::Get()->IsZoomed())
     {
@@ -179,6 +258,7 @@ bool CTreeMapView::HasValidLayout() const
 void CTreeMapView::ClearVisualizationLayout()
 {
     m_treeMap.ClearLayout();
+    m_diffHeaderHeight = 0;
 }
 
 void CTreeMapView::OnRenderCacheTrimmed()

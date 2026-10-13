@@ -1,0 +1,19 @@
+{
+  "logical": {
+    "added_bytes": 200,
+    "removed_bytes": 1000,
+    "grown_bytes": 800,
+    "shrunk_bytes": 500,
+    "net_bytes": -500,
+    "map_bytes": 2500,
+    "changed_files": 5
+  },
+  "physical": {
+    "added_bytes": 4096,
+    "removed_bytes": 4096,
+    "grown_bytes": 4096,
+    "shrunk_bytes": 4096,
+    "net_bytes": 0,
+    "map_bytes": 16384
+  }
+}

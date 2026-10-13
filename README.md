@@ -1,3 +1,11 @@
+# WinDirStat-Diff branch
+
+Native comparison of two saved WinDirStat scans, a delta treemap, and folder/class hover highlighting.
+See [usage and build instructions](docs/DISK_DIFF.md) and [verification status](docs/VERIFICATION.md).
+The Windows build is configured in the **Build Disk Diff** GitHub Actions workflow.
+
+---
+
 # WinDirStat - Windows Directory Statistics
 
 ## Description

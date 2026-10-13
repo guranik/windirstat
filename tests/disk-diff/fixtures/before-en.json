@@ -1,0 +1,68 @@
+[
+  {
+    "Name": "C:\\DiskDiffTest",
+    "Files": 4,
+    "Folders": 1,
+    "Logical Size": 2200,
+    "Physical Size": 20480,
+    "Attributes": "D",
+    "Last Change": "2026-10-13T08:00:00Z",
+    "WinDirStat Attributes": "0x30000004",
+    "Index": "0x0000000000000001"
+  },
+  {
+    "Name": "C:\\DiskDiffTest\\Cache",
+    "Files": 2,
+    "Folders": 0,
+    "Logical Size": 1100,
+    "Physical Size": 12288,
+    "Attributes": "D",
+    "Last Change": "2026-10-13T08:00:00Z",
+    "WinDirStat Attributes": "0x20000004",
+    "Index": "0x0000000000000002"
+  },
+  {
+    "Name": "C:\\DiskDiffTest\\Cache\\grow.log",
+    "Files": 0,
+    "Folders": 0,
+    "Logical Size": 200,
+    "Physical Size": 4096,
+    "Attributes": "A",
+    "Last Change": "2026-10-13T08:00:00Z",
+    "WinDirStat Attributes": "0x20000008",
+    "Index": "0x0000000000000003"
+  },
+  {
+    "Name": "C:\\DiskDiffTest\\Cache\\shrink.bin",
+    "Files": 0,
+    "Folders": 0,
+    "Logical Size": 900,
+    "Physical Size": 8192,
+    "Attributes": "A",
+    "Last Change": "2026-10-13T08:00:00Z",
+    "WinDirStat Attributes": "0x20000008",
+    "Index": "0x0000000000000004"
+  },
+  {
+    "Name": "C:\\DiskDiffTest\\stable.txt",
+    "Files": 0,
+    "Folders": 0,
+    "Logical Size": 100,
+    "Physical Size": 4096,
+    "Attributes": "A",
+    "Last Change": "2026-10-13T08:00:00Z",
+    "WinDirStat Attributes": "0x20000008",
+    "Index": "0x0000000000000005"
+  },
+  {
+    "Name": "C:\\DiskDiffTest\\deleted.zip",
+    "Files": 0,
+    "Folders": 0,
+    "Logical Size": 1000,
+    "Physical Size": 4096,
+    "Attributes": "A",
+    "Last Change": "2026-10-13T08:00:00Z",
+    "WinDirStat Attributes": "0x20000008",
+    "Index": "0x0000000000000006"
+  }
+]

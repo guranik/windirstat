@@ -208,6 +208,8 @@ class CWinDirStatCommandLineInfo final
     static constexpr std::wstring_view saveDupesToFlag = L"savedupesto";
     static constexpr std::wstring_view savePermsToFlag = L"savepermsto";
     static constexpr std::wstring_view loadFromFlag = L"loadfrom";
+    static constexpr std::wstring_view compareFlag = L"compare";
+    static constexpr std::wstring_view comparePhysicalFlag = L"comparephysical";
     static constexpr std::wstring_view legacyUninstallFlag = L"legacyuninstall";
     std::wstring m_path;
 
@@ -232,7 +234,8 @@ public:
     bool HasMalformedCommandLine() const noexcept
     {
         return m_malformedFlag || !m_pendingFlag.empty() ||
-            (m_operationFlag == loadFromFlag && m_hasPathParam);
+            ((m_operationFlag == loadFromFlag || m_operationFlag == compareFlag ||
+                m_operationFlag == comparePhysicalFlag) && m_hasPathParam);
     }
     bool HasInvalidPath() const noexcept { return m_invalidPath; }
     bool IsLegacyUninstallRequested() const noexcept { return m_operationFlag == legacyUninstallFlag; }
@@ -271,6 +274,18 @@ private:
             else if (m_pendingFlag == loadFromFlag)
             {
                 CDirStatApp::Get()->m_loadFromPath = param;
+            }
+            else if (m_pendingFlag == compareFlag || m_pendingFlag == comparePhysicalFlag)
+            {
+                auto* app = CDirStatApp::Get();
+                app->m_comparePhysical = m_pendingFlag == comparePhysicalFlag;
+                if (app->m_compareBeforePath.empty())
+                {
+                    app->m_compareBeforePath = param;
+                    if (bLast) m_malformedFlag = true;
+                    return; // A comparison flag takes two consecutive filenames.
+                }
+                app->m_compareAfterPath = param;
             }
 
             m_pendingFlag.clear();
@@ -324,7 +339,7 @@ private:
             return;
         }
         param = MakeLower(param);
-        static constexpr std::array operationFlags{ saveToFlag, saveDupesToFlag, savePermsToFlag, loadFromFlag };
+        static constexpr std::array operationFlags{ saveToFlag, saveDupesToFlag, savePermsToFlag, loadFromFlag, compareFlag, comparePhysicalFlag };
         if (std::ranges::contains(operationFlags, param))
         {
             if (!m_operationFlag.empty()) m_malformedFlag = true;
@@ -380,7 +395,8 @@ bool CDirStatApp::InitInstance()
     if (cmdInfo.HasMalformedCommandLine()) ExitProcess(1);
 
     const bool hideApp = !m_saveToPath.empty() || !m_saveDupesToPath.empty() || !m_savePermsToPath.empty();
-    const bool autoElevate = IsElevationAvailable() && COptions::AutoElevate && !COptions::ShowElevationPrompt;
+    const bool comparing = !hideApp && cmdInfo.GetPath().empty() && m_loadFromPath.empty();
+    const bool autoElevate = !comparing && IsElevationAvailable() && COptions::AutoElevate && !COptions::ShowElevationPrompt;
 
     // Elevate non-interactive operations before rejecting protected paths or applying changes.
     if (autoElevate && (hideApp || cmdInfo.IsLegacyUninstallRequested())) RunElevated(m_lpCmdLine);
@@ -460,7 +476,7 @@ bool CDirStatApp::InitInstance()
     }
 
     // Allow user to elevate if desired
-    if (IsElevationAvailable() && COptions::ShowElevationPrompt && !hideApp)
+    if (!comparing && IsElevationAvailable() && COptions::ShowElevationPrompt && !hideApp)
     {
         const auto [nID, isChecked] = CMessageBoxDlg::Show(Localization::Lookup(IDS_ELEVATION_QUESTION),
             Localization::Lookup(IDS_DONT_SHOW_AGAIN),false, MB_YESNO | MB_ICONQUESTION, m_pMainWnd);
@@ -472,6 +488,13 @@ bool CDirStatApp::InitInstance()
         {
             RunElevated(m_lpCmdLine);
         }
+    }
+
+    if (!m_compareBeforePath.empty())
+    {
+        if (!CWinDirStatModel::Get()->CompareSnapshotPaths(m_compareBeforePath, m_compareAfterPath,
+            m_comparePhysical ? diskdiff::Metric::Physical : diskdiff::Metric::Logical)) return false;
+        return true;
     }
 
     // Load results if specified via command line
@@ -487,7 +510,7 @@ bool CDirStatApp::InitInstance()
     // Reject unsupported quiet roots instead of leaving a hidden process idle.
     if (cmdInfo.GetPath().empty())
     {
-        OnSelectScanRoots();
+        GetMainWindow()->SendMessage(WM_COMMAND, ID_COMPARE_SNAPSHOTS);
     }
     else if (!CWinDirStatModel::Get()->StartScan(cmdInfo.GetPath()))
     {
@@ -526,7 +549,7 @@ void CDirStatApp::OnSelectScanRoots()
 
 void CDirStatApp::OnUpdateRunElevated(CCmdUI* pCmdUI)
 {
-    pCmdUI->Enable(!IsElevationActive());
+    pCmdUI->Enable(!CWinDirStatModel::Get()->IsDiffMode() && !IsElevationActive());
 }
 
 void CDirStatApp::OnRunElevated()

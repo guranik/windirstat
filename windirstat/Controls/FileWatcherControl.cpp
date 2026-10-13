@@ -34,7 +34,7 @@ void CFileWatcherControl::StartMonitoring()
     StopMonitoring();
 
     const auto* model = CWinDirStatModel::Get();
-    if (!model->HasRootItem()) return;
+    if (!model->HasRootItem() || model->IsDiffMode()) return;
 
     if (CItem* root = model->GetRootItem(); root != nullptr)
     {

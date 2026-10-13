@@ -26,6 +26,7 @@ protected:
     CToolTipCtrl m_toolTip;
     CRect m_portionToolTipRect;
     std::wstring m_portionToolTipText;
+    bool m_diffTrackingMouse = false;
 
 public:
     static std::span<const RouteEntry> Routes();
@@ -36,6 +37,7 @@ protected:
     void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
     void OnLButtonDown(UINT nFlags, CPoint point);
     void OnMouseMove(UINT nFlags, CPoint point);
+    void OnMouseLeave();
     bool OnMouseWheel(UINT nFlags, short zDelta, CPoint point);
     bool OnSetCursor(WindowRef pWnd, UINT nHitTest, UINT message);
     void OnTtnGetDispInfo(NMHDR* pNMHDR, LRESULT* pResult);
@@ -50,6 +52,7 @@ inline std::span<const RouteEntry> CFileTreeControl::Routes()
         Route::Window<&OnKeyDown>(WM_KEYDOWN),
         Route::Window<&OnLButtonDown>(WM_LBUTTONDOWN),
         Route::Window<&OnMouseMove>(WM_MOUSEMOVE),
+        Route::Window<&OnMouseLeave>(WM_MOUSELEAVE),
         Route::Window<&OnMouseWheel>(WM_MOUSEWHEEL),
         Route::Window<&OnSetCursor>(WM_SETCURSOR),
         Route::Window<&OnVScroll>(WM_VSCROLL),

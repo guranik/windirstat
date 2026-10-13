@@ -36,6 +36,15 @@ bool CFileTreeControl::GetPortionToolTip(const CPoint point, CRect& rect, std::w
     const auto* item = static_cast<const CItem*>(GetItem(index));
     if (item == nullptr) return false;
 
+    if (const auto* diff = CWinDirStatModel::Get()->GetSnapshotDiff(); diff)
+    {
+        RECT bounds{};
+        if (!GetItemRect(index, bounds)) return false;
+        rect = bounds;
+        text = diff->Describe(item);
+        return !text.empty();
+    }
+
     const CItem* parent = item->GetParent();
     if (parent == nullptr || !parent->IsDone()) return false;
 
@@ -170,6 +179,16 @@ void CFileTreeControl::OnMouseMove(const UINT nFlags, const CPoint point)
 {
     CTreeListControl::OnMouseMove(nFlags, point);
 
+    if (auto* model = CWinDirStatModel::Get(); model->IsDiffMode())
+    {
+        if (!m_diffTrackingMouse)
+        {
+            TRACKMOUSEEVENT tracking{sizeof(TRACKMOUSEEVENT), TME_LEAVE, Handle(), 0};
+            m_diffTrackingMouse = TrackMouseEvent(&tracking) != 0;
+        }
+        model->SetDiffHover(static_cast<const CItem*>(GetItem(HitTest(point))));
+    }
+
     CRect rect;
     std::wstring text;
     if (!GetPortionToolTip(point, rect, text))
@@ -185,6 +204,13 @@ void CFileTreeControl::OnMouseMove(const UINT nFlags, const CPoint point)
     m_toolTip.SetToolRect(this, PortionToolTipId, m_portionToolTipRect);
     MSG message = CurrentMessage();
     m_toolTip.RelayEvent(&message);
+}
+
+void CFileTreeControl::OnMouseLeave()
+{
+    m_diffTrackingMouse = false;
+    ClearPortionToolTip();
+    CWinDirStatModel::Get()->SetDiffHover(nullptr);
 }
 
 bool CFileTreeControl::OnMouseWheel(const UINT nFlags, const short zDelta, const CPoint point)

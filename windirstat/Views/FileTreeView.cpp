@@ -33,6 +33,23 @@ void CFileTreeView::OnUpdate(CWnd* sender, const MODEL_CHANGE change, CItem* ite
 {
     CControlView::OnUpdate(sender, change, CWinDirStatModel::Get()->GetRootItem());
 
+    if (change == MODEL_CHANGE_NEW_ROOT)
+    {
+        const bool diff = CWinDirStatModel::Get()->IsDiffMode();
+        const auto rename = [&](const int subitem, const std::wstring_view normal, const std::wstring_view comparison)
+        {
+            const int index = GetControl().SubItemToColumn(subitem);
+            if (index < 0) return;
+            auto text = Localization::Lookup(diff ? comparison : normal);
+            LVCOLUMN column{ .mask = LVCF_TEXT, .pszText = text.data() };
+            GetControl().SetColumn(index, &column);
+        };
+        rename(COL_SIZE_PHYSICAL, IDS_COL_SIZE_PHYSICAL, IDS_DIFF_SIZE_BEFORE);
+        rename(COL_SIZE_LOGICAL, IDS_COL_SIZE_LOGICAL, IDS_DIFF_SIZE_AFTER);
+        rename(COL_PERCENTAGE, IDS_COL_PERCENTAGE, IDS_DIFF_NET);
+        rename(COL_SIZE_PROPORTION, IDS_COL_SIZE_PROPORTION, IDS_DIFF_MAGNITUDE);
+    }
+
     if (change == MODEL_CHANGE_SELECTION_ACTION)
     {
         GetControl().EmulateInteractiveSelection(item);

@@ -168,6 +168,22 @@ bool CItem::DrawSubItem(const int subitem, CDC* pdc, CRect rc, const UINT state,
 
 std::wstring CItem::GetText(const int subitem) const
 {
+    if (const auto* diff = CWinDirStatModel::Get()->GetSnapshotDiff(); diff != nullptr)
+    {
+        if (const auto* entry = diff->Find(this); entry != nullptr)
+        {
+            switch (subitem)
+            {
+            case COL_NAME:
+                return entry->kind ? L"[" + SnapshotDiffData::KindName(*entry->kind) + L"] " + GetName(true) : GetName(true);
+            case COL_SIZE_PHYSICAL: return FormatBytes(entry->before.Get(diff->metric));
+            case COL_SIZE_LOGICAL: return FormatBytes(entry->after.Get(diff->metric));
+            case COL_PERCENTAGE: return SnapshotDiffData::NetText(entry->totals);
+            case COL_LAST_CHANGE: case COL_OWNER: case COL_ATTRIBUTES: return {};
+            default: break;
+            }
+        }
+    }
     switch (subitem)
     {
     case COL_SIZE_PHYSICAL:
@@ -286,6 +302,25 @@ COLORREF CItem::GetItemTextColor() const
 int CItem::CompareSibling(const CTreeListItem* tlib, const int subitem) const
 {
     const CItem* other = reinterpret_cast<const CItem*>(tlib);
+    if (const auto* diff = CWinDirStatModel::Get()->GetSnapshotDiff(); diff)
+    {
+        const auto* a = diff->Find(this);
+        const auto* b = diff->Find(other);
+        if (a && b)
+        {
+            if (subitem == COL_SIZE_PHYSICAL) return usignum(a->before.Get(diff->metric), b->before.Get(diff->metric));
+            if (subitem == COL_SIZE_LOGICAL) return usignum(a->after.Get(diff->metric), b->after.Get(diff->metric));
+            if (subitem == COL_PERCENTAGE)
+            {
+                const auto ai = a->totals.Increase(), ad = a->totals.Decrease();
+                const auto bi = b->totals.Increase(), bd = b->totals.Decrease();
+                const bool an = ai < ad, bn = bi < bd;
+                if (an != bn) return an ? -1 : 1;
+                const int magnitude = usignum(an ? ad - ai : ai - ad, bn ? bd - bi : bi - bd);
+                return an ? -magnitude : magnitude;
+            }
+        }
+    }
 
     switch (subitem)
     {
@@ -422,8 +457,8 @@ HICON CItem::GetIcon()
 
     // Supply shell-compatible paths and attributes for MTP icon lookup
     const CItem* refItem = GetLinkedItem();
-    const bool mtp = refItem->IsTypeOrFlag(ITF_MTP);
-    const std::wstring iconPath = mtp && !refItem->IsMtpRoot() ?
+    const bool mtp = refItem->IsTypeOrFlag(ITF_MTP) || CWinDirStatModel::Get()->IsDiffMode();
+    const std::wstring iconPath = mtp && (!refItem->IsMtpRoot() || CWinDirStatModel::Get()->IsDiffMode()) ?
         L"C:\\~" + (refItem->IsTypeOrFlag(IT_FILE) ? refItem->GetExtension() : std::wstring{}) : refItem->GetPath();
     const DWORD attributes = mtp ?
         (refItem->IsTypeOrFlag(IT_DIRECTORY) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL) :
@@ -1101,6 +1136,9 @@ ULONGLONG CItem::GetProgressRangeDrive() const
 
 COLORREF CItem::GetGraphColor() const
 {
+    if (const auto* diff = CWinDirStatModel::Get()->GetSnapshotDiff(); diff != nullptr)
+        if (const auto* entry = diff->Find(this); entry != nullptr && entry->kind)
+            return SnapshotDiffData::KindColor(*entry->kind);
     if (IsTypeOrFlag(IT_UNKNOWN))
     {
         return RGB(255, 255, 0) | CTreeMap::COLORFLAG_LIGHTER;

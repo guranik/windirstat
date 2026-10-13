@@ -338,13 +338,28 @@
 #define ID_WATCHER_START                32967
 #define ID_WDS_CONTROL                  32968
 
+#define IDD_COMPARE_SNAPSHOTS           119
+#define ID_COMPARE_SNAPSHOTS            32969
+#define ID_DIFF_HIGHLIGHT_ALL            32970
+#define ID_DIFF_HIGHLIGHT_ADDED          32971
+#define ID_DIFF_HIGHLIGHT_REMOVED        32972
+#define ID_DIFF_HIGHLIGHT_GROWN          32973
+#define ID_DIFF_HIGHLIGHT_SHRUNK         32974
+#define IDC_DIFF_BEFORE                 1176
+#define IDC_DIFF_AFTER                  1177
+#define IDC_DIFF_BROWSE_BEFORE           1178
+#define IDC_DIFF_BROWSE_AFTER            1179
+#define IDC_DIFF_SWAP                   1180
+#define IDC_DIFF_LOGICAL                1181
+#define IDC_DIFF_PHYSICAL               1182
+
 // Next default values for new objects
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        119
-#define _APS_NEXT_COMMAND_VALUE         32969
-#define _APS_NEXT_CONTROL_VALUE         1176
-#define _APS_NEXT_SYMED_VALUE           119
+#define _APS_NEXT_RESOURCE_VALUE        120
+#define _APS_NEXT_COMMAND_VALUE         32975
+#define _APS_NEXT_CONTROL_VALUE         1183
+#define _APS_NEXT_SYMED_VALUE           120
 #endif
 #endif

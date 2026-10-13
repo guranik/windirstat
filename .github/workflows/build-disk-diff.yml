@@ -1,0 +1,63 @@
+name: Build Disk Diff
+on:
+  workflow_dispatch:
+  push:
+    branches: [disk-diff]
+  pull_request:
+    paths:
+      - 'windirstat/**'
+      - 'scripts/*diff*.ps1'
+      - 'tests/disk-diff/**'
+      - '.github/workflows/build-disk-diff.yml'
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Compile and test portable comparison core
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Iwindirstat windirstat/SnapshotDiffCore.cpp tests/disk-diff/TestCore.cpp -o /tmp/test-diff-core
+          /tmp/test-diff-core
+      - name: Check memory and undefined behavior
+        run: |
+          g++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Iwindirstat windirstat/SnapshotDiffCore.cpp tests/disk-diff/TestCore.cpp -o /tmp/test-diff-sanitized
+          /tmp/test-diff-sanitized
+  windows:
+    needs: core
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Test Windows path folding and UTF-16; benchmark 250,000 files
+        shell: pwsh
+        run: ./scripts/test-diff-core.ps1 -BenchmarkFiles 250000
+      - name: Build Windows x64 executable with VS 2022 (v143 override)
+        shell: pwsh
+        run: ./scripts/build-diff.ps1 -Toolset v143
+      - name: Smoke-test startup and snapshot comparison
+        shell: pwsh
+        run: ./tests/disk-diff/Test-Ui.ps1 -Exe ./build/WinDirStat-Diff_x64.exe
+      - name: Assemble portable package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path build/portable -Force | Out-Null
+          Copy-Item build/WinDirStat-Diff_x64.exe build/portable/WinDirStat-Diff.exe
+          Copy-Item docs/DISK_DIFF.md build/portable/README.md
+          Copy-Item docs/VERIFICATION.md build/portable/VERIFICATION.md
+          Copy-Item LICENSE.md build/portable/LICENSE.md
+          Copy-Item tests/disk-diff/fixtures build/portable/examples -Recurse
+          # Keep fork settings local instead of reusing installed WinDirStat settings.
+          New-Item -ItemType File -Path build/portable/WinDirStat-Diff.ini -Force | Out-Null
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: WinDirStat-Diff-Windows-x64
+          path: build/portable/
+          if-no-files-found: error
+          retention-days: 30

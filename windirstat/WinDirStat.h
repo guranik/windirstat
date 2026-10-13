@@ -64,6 +64,8 @@ protected:
     COLORREF m_altColor;            // Coloring of compressed items
     COLORREF m_altEncryptionColor;  // Coloring of encrypted items
     std::wstring m_loadFromPath;    // Path to load results from
+    std::wstring m_compareBeforePath, m_compareAfterPath;
+    bool m_comparePhysical = false;
     std::wstring m_saveToPath;      // Path to save results to
     std::wstring m_saveDupesToPath; // Path to save duplicates to
     std::wstring m_savePermsToPath; // Path to save permissions to

@@ -781,7 +781,7 @@ void CMainFrame::ApplyPaneVisibility(const bool restoreDuringScan)
     }
 
     RestoreSplitterPositions();
-    const bool showFileTypes = GetExtensionView()->IsShowTypes();
+    const bool showFileTypes = !CWinDirStatModel::Get()->IsDiffMode() && GetExtensionView()->IsShowTypes();
     const bool showVisualization = IsVisualizationShown();
     if (!showFileTypes && !showVisualization)
     {

@@ -197,7 +197,8 @@ void CGraphView::DrawHighlights(CDC* pDC)
     default:
         break;
     }
-    if (m_hoverItem != nullptr) DrawHover(pDC);
+    const auto* diff = CWinDirStatModel::Get()->GetSnapshotDiff();
+    if (m_hoverItem != nullptr || (diff && diff->hoverItem)) DrawHover(pDC);
 }
 
 bool CGraphView::IsExtensionHighlighted(const CItem* item)
@@ -365,6 +366,7 @@ void CGraphView::OnUpdate(CWnd* sender, const MODEL_CHANGE change, CItem* item)
     case MODEL_CHANGE_SELECTION_REFRESH:
     case MODEL_CHANGE_SELECTION_STYLE:
     case MODEL_CHANGE_EXTENSION_SELECTION:
+    case MODEL_CHANGE_DIFF_HOVER:
         CWinDirStatPane::OnUpdate(sender, change, item);
         CMainFrame::Get()->UpdatePaneText();
         break;
@@ -478,7 +480,8 @@ void CGraphView::OnMouseMove(UINT /*nFlags*/, const CPoint point)
 bool CGraphView::UpdateHoverDetails(const CItem* item, const bool itemChanged)
 {
     if (!itemChanged) return false;
-    const std::wstring path = item == nullptr ? std::wstring{} : item->GetPath();
+    const auto* diff = CWinDirStatModel::Get()->GetSnapshotDiff();
+    const std::wstring path = item == nullptr ? std::wstring{} : diff ? diff->Describe(item) : item->GetPath();
     const ULONGLONG size = item == nullptr ? 0 : item->TmiGetSize();
     if (path == m_paneTextOverride && size == m_paneSizeOverride) return false;
 

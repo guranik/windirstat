@@ -205,6 +205,9 @@ POWERSHELL.EXE -NoLogo -ExecutionPolicy Unrestricted -NoProfile -File "$(Project
     <ClInclude Include="version.h" />
     <ClInclude Include="Constants.h" />
     <ClInclude Include="BlockingQueue.h" />
+    <ClInclude Include="SnapshotDiffCore.h" />
+    <ClInclude Include="SnapshotDiff.h" />
+    <ClInclude Include="Dialogs\CompareSnapshotsDlg.h" />
     <ClInclude Include="CsvLoader.h" />
     <ClInclude Include="WinDirStatModel.h" />
     <ClInclude Include="FinderBasic.h" />
@@ -262,6 +265,11 @@ POWERSHELL.EXE -NoLogo -ExecutionPolicy Unrestricted -NoProfile -File "$(Project
     <ClCompile Include="Controls\FlameGraph.cpp" />
     <ClCompile Include="Controls\Sunburst.cpp" />
     <ClCompile Include="Controls\XYSlider.cpp" />
+    <ClCompile Include="SnapshotDiffCore.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="SnapshotDiff.cpp" />
+    <ClCompile Include="Dialogs\CompareSnapshotsDlg.cpp" />
     <ClCompile Include="CsvLoader.cpp" />
     <ClCompile Include="DarkMode.cpp" />
     <ClCompile Include="UiAppearance.cpp" />

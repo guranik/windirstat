@@ -335,7 +335,12 @@ void CMainFrame::UpdatePaneText()
     ULONGLONG size = MAXULONGLONG;
 
     // Allow the active visualization to override the selection text while hovered
-    if (const auto hoverInfo = GetActiveVisualization()->GetHoverInfo(); !hoverInfo.path.empty())
+    if (const auto* diff = CWinDirStatModel::Get()->GetSnapshotDiff(); diff && diff->hoverItem)
+    {
+        fileSelectionText = diff->Describe(diff->hoverItem);
+        size = diff->hoverItem->TmiGetSize();
+    }
+    else if (const auto hoverInfo = GetActiveVisualization()->GetHoverInfo(); !hoverInfo.path.empty())
     {
         fileSelectionText = hoverInfo.path;
         size = hoverInfo.size;
@@ -350,7 +355,8 @@ void CMainFrame::UpdatePaneText()
             if (items.size() == 1)
             {
                 // If single item selected, show full path
-                const auto path = items.front()->GetPath();
+                const auto* diff = CWinDirStatModel::Get()->GetSnapshotDiff();
+                const auto path = diff ? diff->Describe(items.front()) : items.front()->GetPath();
                 if (!path.empty()) fileSelectionText = path;
             }
             else if (items.size() > 1)
@@ -428,13 +434,13 @@ void CMainFrame::OnUpdateViewShowVisualization(CCmdUI* pCmdUI) const
 
 void CMainFrame::OnUpdateTreeMapUseLogical(CCmdUI* pCmdUI)
 {
-    pCmdUI->Enable(!CWinDirStatModel::Get()->IsScanRunning());
+    pCmdUI->Enable(!CWinDirStatModel::Get()->IsDiffMode() && !CWinDirStatModel::Get()->IsScanRunning());
     pCmdUI->SetRadio(COptions::TreeMapUseLogical);
 }
 
 void CMainFrame::OnUpdateTreeMapUsePhysical(CCmdUI* pCmdUI)
 {
-    pCmdUI->Enable(!CWinDirStatModel::Get()->IsScanRunning());
+    pCmdUI->Enable(!CWinDirStatModel::Get()->IsDiffMode() && !CWinDirStatModel::Get()->IsScanRunning());
     pCmdUI->SetRadio(!COptions::TreeMapUseLogical);
 }
 
@@ -445,6 +451,7 @@ void CMainFrame::OnUpdateViewAbsolutePercentages(CCmdUI* pCmdUI)
 
 void CMainFrame::OnUpdateViewShowFileTypes(CCmdUI* pCmdUI) const
 {
+    if (CWinDirStatModel::Get()->IsDiffMode()) return pCmdUI->Enable(false);
     pCmdUI->SetCheck(GetExtensionView()->IsShowTypes());
 }
 
@@ -576,6 +583,7 @@ static void SortItemRecursive(CItem* item)
 
 void CMainFrame::OnViewTreeMapUseLogical()
 {
+    if (CWinDirStatModel::Get()->IsDiffMode()) return;
     if (!COptions::TreeMapUseLogical)
     {
         COptions::TreeMapUseLogical = true;
@@ -590,6 +598,7 @@ void CMainFrame::OnViewTreeMapUseLogical()
 
 void CMainFrame::OnViewTreeMapUsePhysical()
 {
+    if (CWinDirStatModel::Get()->IsDiffMode()) return;
     if (COptions::TreeMapUseLogical)
     {
         COptions::TreeMapUseLogical = false;
@@ -864,13 +873,14 @@ bool CWatcherFilterEdit::PreprocessMessage(MSG* message)
 
 void CMainFrame::OnWatcherStart()
 {
+    if (CWinDirStatModel::Get()->IsDiffMode()) return;
     CFileWatcherControl::Get()->StartMonitoring();
 }
 
 void CMainFrame::OnUpdateWatcherStart(CCmdUI* pCmdUI)
 {
     const auto* watcher = CFileWatcherControl::Get();
-    pCmdUI->Enable(watcher != nullptr && !watcher->IsMonitoring() &&
+    pCmdUI->Enable(!CWinDirStatModel::Get()->IsDiffMode() && watcher != nullptr && !watcher->IsMonitoring() &&
         CWinDirStatModel::Get()->HasRootItem());
 }
 

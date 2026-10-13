@@ -80,7 +80,7 @@ void CTreeMapView::DrawDiffLegend(CDC* pdc, CRect& rect)
     const auto* entry = diff->Find(CWinDirStatModel::Get()->GetZoomItem());
     if (!entry || rect.Width() <= 0) return;
     const int columns = rect.Width() >= ScaleForDpi(800) ? 4 : 2;
-    const int rowHeight = std::max(ScaleForDpi(26), pdc->GetTextExtent(L"Ag").cy + ScaleForDpi(8));
+    const int rowHeight = std::max(ScaleForDpi(26), static_cast<int>(pdc->GetTextExtent(L"Ag").cy) + ScaleForDpi(8));
     m_diffHeaderHeight = std::min<int>(rect.Height(), rowHeight * (4 / columns));
     CRect header = rect;
     header.bottom = header.top + m_diffHeaderHeight;

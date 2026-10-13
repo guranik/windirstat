@@ -4,6 +4,7 @@ $exePath = (Resolve-Path -LiteralPath $Exe).Path
 $fixtures = Join-Path $PSScriptRoot 'fixtures'
 Add-Type @'
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 public static class DiskDiffSmoke {
@@ -21,6 +22,17 @@ public static class DiskDiffSmoke {
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")] public static extern uint GetMenuState(IntPtr menu, uint item, uint flags);
     public static string Text(IntPtr window) { var b=new StringBuilder(4096); GetWindowText(window,b,b.Capacity); return b.ToString(); }
+    public static string WindowsFor(uint pid) {
+        var windows=new List<string>();
+        EnumWindows((w,p) => { uint owner; GetWindowThreadProcessId(w,out owner);
+            if(owner==pid) { var b=new StringBuilder(256); GetClassName(w,b,b.Capacity);
+                windows.Add(String.Format("class={0}, title={1}, visible={2}, snapshot inputs={3}/{4}",
+                    b.ToString(), Text(w), IsWindowVisible(w),
+                    GetDlgItem(w,1176)!=IntPtr.Zero, GetDlgItem(w,1177)!=IntPtr.Zero)); }
+            return true;
+        },IntPtr.Zero);
+        return windows.Count==0 ? "(none)" : String.Join("; ",windows.ToArray());
+    }
     public static IntPtr CompareDialog(uint pid) {
         IntPtr found=IntPtr.Zero;
         EnumWindows((w,p) => { uint owner; GetWindowThreadProcessId(w,out owner);
@@ -41,15 +53,15 @@ public static class DiskDiffSmoke {
     }
 }
 '@
-function Wait-ForWindow([scriptblock]$GetWindow, [System.Diagnostics.Process]$Process) {
+function Wait-ForWindow([scriptblock]$GetWindow, [System.Diagnostics.Process]$Process, [string]$Stage) {
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
     do {
         $window = & $GetWindow
         if ($window -ne [IntPtr]::Zero) { return $window }
-        if ($Process.HasExited) { throw "WinDirStat exited before expected UI appeared (exit $($Process.ExitCode))." }
+        if ($Process.HasExited) { throw "WinDirStat exited before $Stage appeared (exit $($Process.ExitCode))." }
         Start-Sleep -Milliseconds 100
     } while ([DateTime]::UtcNow -lt $deadline)
-    throw 'Expected WinDirStat UI did not appear within 30 seconds.'
+    throw "Expected $Stage did not appear within 30 seconds. Process windows: $([DiskDiffSmoke]::WindowsFor([uint32]$Process.Id))"
 }
 $tempDir = Join-Path ([IO.Path]::GetTempPath()) ('DiskDiffUi-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tempDir | Out-Null
@@ -59,13 +71,16 @@ New-Item -ItemType File -Path (Join-Path $tempDir 'WinDirStat-Diff.ini') | Out-N
 $process = $null
 try {
     $process = Start-Process -FilePath $tempExe -WorkingDirectory $tempDir -PassThru
-    $dialog = Wait-ForWindow { [DiskDiffSmoke]::CompareDialog([uint32]$process.Id) } $process
+    Write-Host "Waiting for comparison dialog (PID $($process.Id))."
+    $dialog = Wait-ForWindow { [DiskDiffSmoke]::CompareDialog([uint32]$process.Id) } $process 'comparison dialog'
+    Write-Host 'Comparison dialog detected.'
     $before = [DiskDiffSmoke]::GetDlgItem($dialog,1176)
     $after = [DiskDiffSmoke]::GetDlgItem($dialog,1177)
     if (-not [DiskDiffSmoke]::SetWindowText($before,(Join-Path $fixtures 'before-en.json'))) { throw 'Cannot fill snapshot A.' }
     if (-not [DiskDiffSmoke]::SetWindowText($after,(Join-Path $fixtures 'after-ru.json'))) { throw 'Cannot fill snapshot B.' }
     [void][DiskDiffSmoke]::SendMessage([DiskDiffSmoke]::GetDlgItem($dialog,1),0x00F5,[IntPtr]::Zero,[IntPtr]::Zero)
-    $frame = Wait-ForWindow { [DiskDiffSmoke]::ComparedFrame([uint32]$process.Id) } $process
+    Write-Host 'Waiting for compared main window.'
+    $frame = Wait-ForWindow { [DiskDiffSmoke]::ComparedFrame([uint32]$process.Id) } $process 'compared main window'
     if ([DiskDiffSmoke]::Text($frame) -notmatch 'Δ -500') { throw 'Window title does not show the expected -500-byte net change.' }
     if ([DiskDiffSmoke]::LargestListCount($frame) -lt 1) { throw 'Changed-file tree was not populated.' }
     $fileMenu = [DiskDiffSmoke]::GetSubMenu([DiskDiffSmoke]::GetMenu($frame),0)

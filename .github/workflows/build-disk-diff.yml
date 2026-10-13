@@ -45,6 +45,7 @@ jobs:
         shell: pwsh
         run: ./tests/disk-diff/Test-Ui.ps1 -Exe ./build/WinDirStat-Diff_x64.exe
       - name: Assemble portable package
+        if: ${{ !cancelled() && hashFiles('build/WinDirStat-Diff_x64.exe') != '' }}
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path build/portable -Force | Out-Null
@@ -56,6 +57,7 @@ jobs:
           # Keep fork settings local instead of reusing installed WinDirStat settings.
           New-Item -ItemType File -Path build/portable/WinDirStat-Diff.ini -Force | Out-Null
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() && hashFiles('build/portable/WinDirStat-Diff.exe') != '' }}
         with:
           name: WinDirStat-Diff-Windows-x64
           path: build/portable/
